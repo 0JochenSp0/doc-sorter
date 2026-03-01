@@ -1,0 +1,176 @@
+<!-- app/web/templates/index.html -->
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dokumenten-Sorter</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Dokumenten-Sorter</h1>
+      <div class="sub">LAN UI · Port 5434 · Nur PDF</div>
+    </header>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Konfiguration</h2>
+        <button id="saveBtn" class="btn primary">Speichern</button>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label>Inbox-Ordner</label>
+          <div class="row">
+            <input id="inbox_dir" type="text" placeholder="/media/..." />
+            <button class="btn" data-pick="inbox_dir">Auswählen</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Output-Ordner</label>
+          <div class="row">
+            <input id="output_dir" type="text" placeholder="/media/..." />
+            <button class="btn" data-pick="output_dir">Auswählen</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Review-Ordner</label>
+          <div class="row">
+            <input id="review_dir" type="text" placeholder="/media/..." />
+            <button class="btn" data-pick="review_dir">Auswählen</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Log-Ordner</label>
+          <div class="row">
+            <input id="log_dir" type="text" placeholder="/media/..." />
+            <button class="btn" data-pick="log_dir">Auswählen</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Log-Retention (Tage)</label>
+          <input id="log_retention_days" type="number" min="1" max="365" />
+          <div class="hint">Log rotiert täglich. Es werden nur die letzten N Tage behalten.</div>
+        </div>
+
+        <div class="field">
+          <label>Intervall (Minuten)</label>
+          <input id="interval_minutes" type="number" min="1" max="1440" />
+          <div class="hint">Für Erweiterung vorgesehen. Scheduler läuft aktuell jede volle Stunde.</div>
+        </div>
+
+        <div class="field">
+          <label>Year-Check Policy</label>
+          <select id="year_policy">
+            <option value="strict">strict (nur Scan-Jahr oder Scan-Jahr-1)</option>
+            <option value="relaxed">relaxed (+/- Toleranz)</option>
+            <option value="off">off (nie Review wegen Jahr)</option>
+          </select>
+          <div class="hint">Steuert, ob „year_mismatch“ in den Review wandert.</div>
+        </div>
+
+        <div class="field">
+          <label>Relaxed-Toleranz (Jahre)</label>
+          <input id="year_relaxed_years" type="number" min="0" max="10" />
+          <div class="hint">Nur relevant bei Policy „relaxed“.</div>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label>Absenderliste (eine Zeile pro Absender)</label>
+          <textarea id="sender_candidates" rows="7" placeholder="uniVersa&#10;FNZ&#10;Stadt Böblingen"></textarea>
+          <div class="hint">Wird gegen die komplette erste Seite (OCR/Text) gematcht.</div>
+        </div>
+
+        <div class="field">
+          <label>Bank-Ordnername (unter &lt;Jahr&gt;)</label>
+          <input id="bank_folder_name" type="text" placeholder="Bank" />
+          <div class="hint">Ziel: &lt;output&gt;/&lt;jahr&gt;/&lt;Bank-Ordner&gt;/</div>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label>Bank-Absenderliste (eine Zeile pro Absender)</label>
+          <textarea id="bank_sender_candidates" rows="7" placeholder="Trade Republic&#10;ING&#10;Comdirect&#10;DKB"></textarea>
+          <div class="hint">
+            Match auf kompletter Seite 1. Wenn Treffer: Routing in Bank-Ordner.
+            Ausnahme: Wenn im Dokument „Rechnung“ oder „invoice“ steht → trotzdem Rechnung.
+          </div>
+        </div>
+      </div>
+
+      <div id="msg" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Status</h2>
+        <div class="right">
+          <button id="runBtn" class="btn primary">Jetzt ausführen</button>
+        </div>
+      </div>
+
+      <div class="status">
+        <div class="kv"><div class="k">Running</div><div id="st_running" class="v">-</div></div>
+        <div class="kv"><div class="k">Letzter Lauf</div><div id="st_ts" class="v mono">-</div></div>
+        <div class="kv"><div class="k">Dauer</div><div id="st_dur" class="v">-</div></div>
+      </div>
+
+      <div class="counts">
+        <div class="pill">success: <span id="c_success">0</span></div>
+        <div class="pill">review: <span id="c_review">0</span></div>
+        <div class="pill">ignored: <span id="c_ignored">0</span></div>
+        <div class="pill">error: <span id="c_error">0</span></div>
+      </div>
+
+      <h3>Review-Gründe (letzter Lauf)</h3>
+      <pre id="st_review_reasons" class="pre"></pre>
+
+      <h3>Review-Beispiele</h3>
+      <pre id="st_review_samples" class="pre"></pre>
+
+      <h3>Letzte Fehler</h3>
+      <pre id="st_errors" class="pre"></pre>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Review-Queue</h2>
+        <div class="right">
+          <button id="reviewRefreshBtn" class="btn">Aktualisieren</button>
+        </div>
+      </div>
+
+      <div class="hint" style="margin-bottom:10px;">Tipp: „Öffnen“ zeigt das PDF. Mit „Apply“ kannst du ein Datum (YYYY-MM oder YYYY-MM-DD) setzen und direkt in den Output verschieben.</div>
+
+      <div id="reviewList" class="review-list"></div>
+    </section>
+
+  </div>
+
+  <div id="picker" class="picker hidden">
+    <div class="picker-card">
+      <div class="picker-header">
+        <div>
+          <div class="picker-title">Ordner auswählen</div>
+          <div id="picker-path" class="picker-path mono">/media</div>
+        </div>
+        <button id="picker-close" class="btn">Schließen</button>
+      </div>
+
+      <div class="picker-actions">
+        <button id="picker-up" class="btn">⬆︎ Hoch</button>
+        <button id="picker-select" class="btn primary">Diesen Ordner wählen</button>
+      </div>
+
+      <div id="picker-list" class="picker-list"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# docker-compose.yml
+services:
+  doc-sorter:
+    build: .
+    container_name: doc-sorter
+    restart: unless-stopped
+    privileged: false
+    environment:
+      - TZ=Europe/Berlin
+      - APP_PORT=5434
+      - DB_PATH=/data/app.db
+      - MEDIA_ROOT=/media
+    volumes:
+      - /media:/media:rw
+      - doc-sorter-data:/data
+    ports:
+      - "5434:5434"
+
+volumes:
+  doc-sorter-data:
