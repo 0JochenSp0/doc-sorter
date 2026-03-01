@@ -657,6 +657,12 @@ def process_inbox(*, db: DB, settings: Settings, media_root: Path, logger) -> Pr
                     if ocr_tmp:
                         cleanup_temp_ocr(ocr_tmp)
 
+
+            # Guess sender as early as possible so Review items can prefill it
+            sender_guess = guess_sender_from_header(page1_text)
+            sender_for_name, sender_for_audit, sender_conf = pick_sender_for_filename(
+                settings, sender_guess, page1_text, p.name
+            )
             ship_date = extract_shipping_date(text_2pages)
             if not ship_date:
                 dst = review / p.name
@@ -685,8 +691,8 @@ def process_inbox(*, db: DB, settings: Settings, media_root: Path, logger) -> Pr
                         original_path=str(p.parent),
                         original_name=p.name,
                         extracted_date=None,
-                        sender=None,
-                        sender_confidence=None,
+                        sender=sender_for_audit,
+                        sender_confidence=sender_conf,
                         target_path=str(review),
                         new_name=p.name,
                         duplicate_n=None,
@@ -712,8 +718,8 @@ def process_inbox(*, db: DB, settings: Settings, media_root: Path, logger) -> Pr
                         original_path=str(p.parent),
                         original_name=p.name,
                         extracted_date=date_part,
-                        sender=None,
-                        sender_confidence=None,
+                        sender=sender_for_audit,
+                        sender_confidence=sender_conf,
                         target_path=str(dst.parent),
                         new_name=dst.name,
                         duplicate_n=None,
@@ -727,8 +733,8 @@ def process_inbox(*, db: DB, settings: Settings, media_root: Path, logger) -> Pr
                         original_path=str(p.parent),
                         original_name=p.name,
                         extracted_date=date_part,
-                        sender=None,
-                        sender_confidence=None,
+                        sender=sender_for_audit,
+                        sender_confidence=sender_conf,
                         target_path=str(review),
                         new_name=p.name,
                         duplicate_n=None,
@@ -741,10 +747,7 @@ def process_inbox(*, db: DB, settings: Settings, media_root: Path, logger) -> Pr
             month = parts[1]
             date_for_db = date_part
 
-            sender_guess = guess_sender_from_header(page1_text)
-            sender_for_name, sender_for_audit, sender_conf = pick_sender_for_filename(
-                settings, sender_guess, page1_text, p.name
-            )
+            # sender_guess already computed above for Review prefilling
 
             # ---- bank vs invoice routing rules ----
             bank_list = parse_sender_candidates(settings.bank_sender_candidates)

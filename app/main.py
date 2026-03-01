@@ -105,7 +105,7 @@ async def lifespan(app: FastAPI):
         scheduler.shutdown()
 
 
-app = FastAPI(title="Dokumenten-Sorter", version="1.1.1", lifespan=lifespan)
+app = FastAPI(title="Dokumenten-Sorter", version="1.1.2", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static")
 
